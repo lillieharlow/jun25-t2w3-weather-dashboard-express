@@ -46,28 +46,50 @@ function blockAntartica(request, response, next) {
     next();
 }
 
+dummyAuth = (request, response, next) => {
+    // For demo, simulate the authenticated users only
+    const authenticated = true;
+    if (!authenticated){
+        return response.status(401).json({
+            error: "You must be logged in!!"
+        });
+    }
+    next();
+}
+
+checkAdminRole = (request, response, next) => {
+    // For demo, simulate getting admin check from the token/header
+    const user = {isAdmin: true};
+    if (!user || !user.isAdmin){
+        response.status(403).json({
+            error: "Admins only."
+        });
+    }
+    next();
+}
+
 app.get('/', (request, response) => {
     response.json({
         "message": "Hello World!"
     });
 });
 
-app.post('/weather', validateCoords, blockAntartica, async (request, response, next) => {
+app.post('/weather', dummyAuth, checkAdminRole, validateCoords, blockAntartica, async (request, response, next) => {
     const { latitude, longitude } = request.body;
     try {
-        const weatherResponse = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}`);
+        const weatherResponse = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current`);
 
         const data = await weatherResponse.json();
+        console.log(data);
 
-        if(!response.current_weather){
+        if(!data.current){
             // Passes API fetch error to error middleware
             throw new Error(data.error || 'Failed to fetch weather data');
         }
 
         response.json({
             location: { latitude, longitude },
-            current: data.current_weather,
-            units: data.current_weather_units
+            current: data.current,
         });
     } catch (err) {
         next(err);
